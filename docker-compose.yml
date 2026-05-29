@@ -1,6 +1,7 @@
 version: "3"
 services:
   hub:
+    platform: linux/amd64
     build:
       context: ./
       dockerfile: Dockerfile.hub
@@ -8,6 +9,7 @@ services:
     ports:
       - "5000:80"
   client:
+    platform: linux/amd64
     build:
       context: ./
       dockerfile: Dockerfile.client

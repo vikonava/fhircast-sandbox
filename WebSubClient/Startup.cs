@@ -17,6 +17,15 @@ namespace FHIRcastSandbox.WebSubClient
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", builder =>
+                {
+                    builder.AllowAnyOrigin()
+                           .AllowAnyMethod()
+                           .AllowAnyHeader();
+                });
+            });
             services.AddMvc();
             services.AddSignalR();
             services.AddSingleton<Subscriptions>();
@@ -33,6 +42,7 @@ namespace FHIRcastSandbox.WebSubClient
                 app.UseExceptionHandler("/Home/Error");
             }
 
+            app.UseCors("AllowAll");
             app.UseStaticFiles();
 
             //app.UseMvc(routes => {

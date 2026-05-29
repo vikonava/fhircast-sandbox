@@ -18,6 +18,7 @@ namespace FHIRcastSandbox.WebSubClient.Hubs
         private readonly ILogger<InternalHubClient> logger;
         private readonly IConfiguration config;
         private HubConnection hubConnection;
+        private bool hubConnectionActive;
         #endregion
 
         #region Events
@@ -79,8 +80,17 @@ namespace FHIRcastSandbox.WebSubClient.Hubs
             // <a href="https://docs.microsoft.com/en-us/aspnet/core/signalr/dotnet-client?view=aspnetcore-2.2">ASP.NET Core SignalR documentation</a>
             hubConnection.Closed += async (error) =>
             {
+                hubConnectionActive = false;
                 await Task.Delay(new Random().Next(0, 5) * 1000);
-                await hubConnection.StartAsync();
+                try
+                {
+                    await hubConnection.StartAsync();
+                    hubConnectionActive = true;
+                }
+                catch (Exception ex)
+                {
+                    RaiseError($"Error reconnecting to InternalHub: {ex.Message}");
+                }
             };
 
             // Add method handlers
@@ -91,10 +101,12 @@ namespace FHIRcastSandbox.WebSubClient.Hubs
             try
             {
                 await hubConnection.StartAsync();
+                hubConnectionActive = true;
                 logger.LogDebug("Started connection to internalhub");
             }
             catch (Exception ex)
             {
+                hubConnectionActive = false;
                 string errorMessage = $"Error connecting to InternalHub: {ex.Message}";
                 logger.LogError(errorMessage);
                 RaiseError(errorMessage);
@@ -105,8 +117,21 @@ namespace FHIRcastSandbox.WebSubClient.Hubs
         #region Calls from WebSubHub
         public async void RegisterTopic(string topic)
         {
-            CreateInternalHubConnection();
-            await RegisterTopicInternal(topic);
+            if (!hubConnectionActive)
+            {
+                RaiseError($"Cannot register topic '{topic}': not connected to InternalHub.");
+                return;
+            }
+
+            try
+            {
+                await RegisterTopicInternal(topic);
+            }
+            catch (InvalidOperationException ex)
+            {
+                hubConnectionActive = false;
+                RaiseError($"Cannot register topic '{topic}': {ex.Message}");
+            }
         }
         #endregion
 
